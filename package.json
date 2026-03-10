@@ -1,0 +1,55 @@
+{
+  "name": "claude-focus",
+  "displayName": "Claude Focus",
+  "description": "Automatically focuses VS Code window when Claude Code needs user action",
+  "version": "0.1.0",
+  "publisher": "techpix",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "claude-focus.focusWindow",
+        "title": "Claude Focus: Focus Window"
+      }
+    ],
+    "configuration": {
+      "title": "Claude Focus",
+      "properties": {
+        "claudeFocus.port": {
+          "type": "number",
+          "default": 19876,
+          "description": "Port for the local HTTP server that listens for focus requests"
+        },
+        "claudeFocus.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable/disable automatic window focusing"
+        },
+        "claudeFocus.showNotification": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show a notification when focusing the window"
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "@types/vscode": "^1.85.0",
+    "typescript": "^5.3.0"
+  }
+}

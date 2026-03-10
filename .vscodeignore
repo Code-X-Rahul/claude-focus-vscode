@@ -1,0 +1,5 @@
+.vscode/**
+src/**
+hooks/**
+node_modules/**
+tsconfig.json
