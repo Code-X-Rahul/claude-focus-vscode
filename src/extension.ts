@@ -115,15 +115,14 @@ function focusWindow(message?: string) {
     `.replace(/\n/g, " ");
     exec(`powershell -NoProfile -Command "${ps}"`, () => {});
   } else {
-    // Linux: try wmctrl (X11) then gdbus (Wayland/GNOME)
-    exec('wmctrl -a "Visual Studio Code"', (err: Error | null) => {
-      if (err) {
-        exec(
-          `gdbus call --session --dest org.gnome.Shell --object-path /org/gnome/Shell --method org.gnome.Shell.Eval "global.get_window_actors().find(w => w.meta_window.get_title().includes('Visual Studio Code'))?.meta_window.activate(global.get_current_time())"`,
-          () => {}
-        );
-      }
-    });
+    // Linux: use wmctrl to raise the window
+    exec('wmctrl -a "Visual Studio Code"', () => {});
+    // Always send a system notification as well
+    const notifyMsg = message || "Claude Code needs your attention!";
+    exec(
+      `notify-send -u critical -a "VS Code" "Claude Focus" "${notifyMsg.replace(/"/g, '\\"')}"`,
+      () => {}
+    );
   }
 
   const config = vscode.workspace.getConfiguration("claudeFocus");
