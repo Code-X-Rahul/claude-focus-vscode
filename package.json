@@ -45,7 +45,9 @@
   "scripts": {
     "vscode:prepublish": "npm run compile",
     "compile": "tsc -p ./",
-    "watch": "tsc -watch -p ./"
+    "watch": "tsc -watch -p ./",
+    "package": "rm -f *.vsix && npx @vscode/vsce package",
+    "install-ext": "npm run package && code --install-extension claude-focus-*.vsix"
   },
   "devDependencies": {
     "@types/node": "^20.0.0",
