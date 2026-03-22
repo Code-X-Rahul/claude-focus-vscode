@@ -131,10 +131,19 @@ function focusWindow(message?: string) {
       exec('wmctrl -a "Visual Studio Code"', () => {});
     }
 
-    // Always send a system notification as well
+    // Send a prominent system notification with sound
     const notifyMsg = message || "Claude Code needs your attention!";
     exec(
-      `notify-send -u critical -a "VS Code" "Claude Focus" "${notifyMsg.replace(/"/g, '\\"')}"`,
+      `notify-send -u critical -a "VS Code" -i dialog-warning "Claude Focus" "${notifyMsg.replace(/"/g, '\\"')}" --action="focus=Open VS Code"`,
+      (err: Error | null, stdout: string) => {
+        if (stdout && stdout.trim() === "focus") {
+          exec('xdg-open "vscode://file/"', () => {});
+        }
+      }
+    );
+    // Play alert sound
+    exec(
+      'canberra-gtk-play -i dialog-warning -d "Claude Focus" 2>/dev/null || paplay /usr/share/sounds/freedesktop/stereo/bell.oga 2>/dev/null || echo -e "\\a"',
       () => {}
     );
   }
