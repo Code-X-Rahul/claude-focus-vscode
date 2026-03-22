@@ -115,21 +115,13 @@ function focusWindow(message?: string) {
     `.replace(/\n/g, " ");
     exec(`powershell -NoProfile -Command "${ps}"`, () => {});
   } else {
-    // Linux: try multiple approaches to raise the window
-    const sessionType = process.env.XDG_SESSION_TYPE || "";
+    // Linux: raise the existing VS Code window
+    const workspaceFolder = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+    const reuseCmd = workspaceFolder
+      ? `code --reuse-window "${workspaceFolder}"`
+      : 'wmctrl -a "Visual Studio Code"';
 
-    if (sessionType === "wayland") {
-      // Wayland: use gio to activate VS Code via its .desktop file
-      exec('gio launch /usr/share/applications/code.desktop', (err: Error | null) => {
-        if (err) {
-          // Fallback: try wmctrl via XWayland
-          exec('wmctrl -a "Visual Studio Code"', () => {});
-        }
-      });
-    } else {
-      // X11: use wmctrl
-      exec('wmctrl -a "Visual Studio Code"', () => {});
-    }
+    exec(reuseCmd, () => {});
 
     // Send a prominent system notification with sound
     const notifyMsg = message || "Claude Code needs your attention!";
@@ -137,7 +129,7 @@ function focusWindow(message?: string) {
       `notify-send -u critical -a "VS Code" -i dialog-warning "Claude Focus" "${notifyMsg.replace(/"/g, '\\"')}" --action="focus=Open VS Code"`,
       (err: Error | null, stdout: string) => {
         if (stdout && stdout.trim() === "focus") {
-          exec('xdg-open "vscode://file/"', () => {});
+          exec(reuseCmd, () => {});
         }
       }
     );
