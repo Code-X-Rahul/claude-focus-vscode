@@ -115,8 +115,33 @@ function focusWindow(message?: string) {
     `.replace(/\n/g, " ");
     exec(`powershell -NoProfile -Command "${ps}"`, () => {});
   } else {
-    // Linux: use wmctrl to raise the window
-    exec('wmctrl -a "Visual Studio Code"', () => {});
+    // Linux: try multiple approaches to raise the window
+    const sessionType = process.env.XDG_SESSION_TYPE || "";
+
+    if (sessionType === "wayland") {
+      // Wayland + GNOME: use gdbus to activate the window
+      exec(
+        `gdbus call --session --dest org.gnome.Shell --object-path /org/gnome/Shell --method org.gnome.Shell.Eval "
+          const start = Date.now();
+          global.get_window_actors().forEach(function(w) {
+            const title = w.meta_window.get_title() || '';
+            if (title.includes('Visual Studio Code') || title.includes('VSCodium') || title.includes('Code - OSS')) {
+              w.meta_window.activate(start / 1000);
+            }
+          });
+        "`,
+        (err: Error | null) => {
+          if (err) {
+            // Fallback: try wmctrl in case XWayland is available
+            exec('wmctrl -a "Visual Studio Code"', () => {});
+          }
+        }
+      );
+    } else {
+      // X11: use wmctrl
+      exec('wmctrl -a "Visual Studio Code"', () => {});
+    }
+
     // Always send a system notification as well
     const notifyMsg = message || "Claude Code needs your attention!";
     exec(
