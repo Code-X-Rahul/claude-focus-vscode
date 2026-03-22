@@ -3,12 +3,24 @@
   "displayName": "Claude Focus",
   "description": "Automatically focuses VS Code window when Claude Code needs user action",
   "version": "0.9.0",
-  "publisher": "RahulRajput",
+  "publisher": "evileye",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Code-X-Rahul/claude-focus-vscode"
+  },
   "engines": {
     "vscode": "^1.85.0"
   },
   "categories": [
     "Other"
+  ],
+  "keywords": [
+    "claude",
+    "claude-code",
+    "focus",
+    "window",
+    "productivity"
   ],
   "activationEvents": [
     "onStartupFinished"
@@ -19,6 +31,14 @@
       {
         "command": "claude-focus.focusWindow",
         "title": "Claude Focus: Focus Window"
+      },
+      {
+        "command": "claude-focus.setupHook",
+        "title": "Claude Focus: Setup Claude Code Hook"
+      },
+      {
+        "command": "claude-focus.removeHook",
+        "title": "Claude Focus: Remove Claude Code Hook"
       }
     ],
     "configuration": {

@@ -1,19 +1,174 @@
 import * as vscode from "vscode";
 import * as http from "http";
+import * as fs from "fs";
+import * as path from "path";
+import * as os from "os";
 
 let server: http.Server | undefined;
+
+const HOOK_MARKER = "claude-focus-hook";
+
+function getClaudeSettingsPath(): string {
+  return path.join(os.homedir(), ".claude", "settings.json");
+}
+
+function readClaudeSettings(): Record<string, unknown> {
+  const settingsPath = getClaudeSettingsPath();
+  try {
+    const content = fs.readFileSync(settingsPath, "utf-8");
+    return JSON.parse(content);
+  } catch {
+    return {};
+  }
+}
+
+function writeClaudeSettings(settings: Record<string, unknown>): void {
+  const settingsPath = getClaudeSettingsPath();
+  const dir = path.dirname(settingsPath);
+  if (!fs.existsSync(dir)) {
+    fs.mkdirSync(dir, { recursive: true });
+  }
+  fs.writeFileSync(settingsPath, JSON.stringify(settings, null, 2) + "\n");
+}
+
+function getHookCommand(port: number): string {
+  if (process.platform === "win32") {
+    return `powershell -NoProfile -Command "$body = [Console]::In.ReadToEnd(); try { Invoke-RestMethod -Uri 'http://127.0.0.1:${port}/focus' -Method POST -ContentType 'application/json' -Body $body -TimeoutSec 2 | Out-Null } catch {}"`;
+  }
+  return `curl -s -X POST http://127.0.0.1:${port}/focus -H 'Content-Type: application/json' -d @- --connect-timeout 1 --max-time 2 > /dev/null 2>&1 || true`;
+}
+
+function isHookInstalled(settings: Record<string, unknown>): boolean {
+  const hooks = settings.hooks as Record<string, unknown[]> | undefined;
+  if (!hooks || !hooks.Notification) {
+    return false;
+  }
+  const notifications = hooks.Notification as Array<{
+    matcher?: string;
+    hooks?: Array<{ type?: string; command?: string }>;
+  }>;
+  return notifications.some((entry) =>
+    entry.hooks?.some(
+      (h) =>
+        h.command?.includes("127.0.0.1") &&
+        h.command?.includes("/focus")
+    )
+  );
+}
+
+function installHook(port: number): boolean {
+  const settings = readClaudeSettings();
+
+  if (isHookInstalled(settings)) {
+    return false; // already installed
+  }
+
+  if (!settings.hooks) {
+    settings.hooks = {};
+  }
+  const hooks = settings.hooks as Record<string, unknown[]>;
+  if (!hooks.Notification) {
+    hooks.Notification = [];
+  }
+
+  const notifications = hooks.Notification as unknown[];
+  notifications.push({
+    matcher: "",
+    hooks: [
+      {
+        type: "command",
+        command: getHookCommand(port),
+      },
+    ],
+  });
+
+  writeClaudeSettings(settings);
+  return true;
+}
+
+function removeHook(): boolean {
+  const settings = readClaudeSettings();
+  const hooks = settings.hooks as Record<string, unknown[]> | undefined;
+  if (!hooks || !hooks.Notification) {
+    return false;
+  }
+
+  const notifications = hooks.Notification as Array<{
+    matcher?: string;
+    hooks?: Array<{ type?: string; command?: string }>;
+  }>;
+
+  const filtered = notifications.filter(
+    (entry) =>
+      !entry.hooks?.some(
+        (h) =>
+          h.command?.includes("127.0.0.1") &&
+          h.command?.includes("/focus")
+      )
+  );
+
+  if (filtered.length === notifications.length) {
+    return false; // nothing to remove
+  }
+
+  if (filtered.length === 0) {
+    delete hooks.Notification;
+  } else {
+    hooks.Notification = filtered;
+  }
+
+  // Clean up empty hooks object
+  if (Object.keys(hooks).length === 0) {
+    delete settings.hooks;
+  }
+
+  writeClaudeSettings(settings);
+  return true;
+}
 
 export function activate(context: vscode.ExtensionContext) {
   const config = vscode.workspace.getConfiguration("claudeFocus");
   const port = config.get<number>("port", 19876);
 
-  // Manual focus command
-  const focusCmd = vscode.commands.registerCommand(
-    "claude-focus.focusWindow",
-    () => focusWindow()
+  // Register commands
+  context.subscriptions.push(
+    vscode.commands.registerCommand("claude-focus.focusWindow", () =>
+      focusWindow()
+    )
   );
-  context.subscriptions.push(focusCmd);
 
+  context.subscriptions.push(
+    vscode.commands.registerCommand("claude-focus.setupHook", async () => {
+      const currentPort = vscode.workspace
+        .getConfiguration("claudeFocus")
+        .get<number>("port", 19876);
+      if (installHook(currentPort)) {
+        vscode.window.showInformationMessage(
+          "Claude Focus: Hook installed in ~/.claude/settings.json"
+        );
+      } else {
+        vscode.window.showInformationMessage(
+          "Claude Focus: Hook is already installed."
+        );
+      }
+    })
+  );
+
+  context.subscriptions.push(
+    vscode.commands.registerCommand("claude-focus.removeHook", async () => {
+      if (removeHook()) {
+        vscode.window.showInformationMessage(
+          "Claude Focus: Hook removed from ~/.claude/settings.json"
+        );
+      } else {
+        vscode.window.showInformationMessage(
+          "Claude Focus: No hook found to remove."
+        );
+      }
+    })
+  );
+
+  // Start HTTP server
   startServer(port);
 
   // Restart server if config changes
@@ -31,9 +186,32 @@ export function activate(context: vscode.ExtensionContext) {
 
   context.subscriptions.push({ dispose: stopServer });
 
-  vscode.window.showInformationMessage(
-    `Claude Focus active on port ${port}`
-  );
+  // Auto-setup: check if hook is installed, prompt if not
+  const settings = readClaudeSettings();
+  if (!isHookInstalled(settings)) {
+    vscode.window
+      .showInformationMessage(
+        "Claude Focus: Set up the Claude Code hook to auto-focus VS Code?",
+        "Install Hook",
+        "Not Now"
+      )
+      .then((choice) => {
+        if (choice === "Install Hook") {
+          const currentPort = vscode.workspace
+            .getConfiguration("claudeFocus")
+            .get<number>("port", 19876);
+          if (installHook(currentPort)) {
+            vscode.window.showInformationMessage(
+              "Claude Focus: Hook installed! Claude Code will now auto-focus VS Code."
+            );
+          }
+        }
+      });
+  } else {
+    vscode.window.showInformationMessage(
+      `Claude Focus active on port ${port}`
+    );
+  }
 }
 
 function startServer(port: number) {
