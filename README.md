@@ -54,7 +54,7 @@ npm run compile
 npx @vscode/vsce package
 
 # Install the extension
-code --install-extension claude-focus-0.1.0.vsix
+code --install-extension claude-focus-*.vsix
 ```
 
 > **Note:** You need Node.js 18+ installed.
@@ -62,6 +62,8 @@ code --install-extension claude-focus-0.1.0.vsix
 ---
 
 ### Step 2: Configure Claude Code Hooks
+
+> **Note:** The hook scripts are included in the source repository but **not** in the packaged `.vsix` file. Clone or download the repo to get the `hooks/` directory.
 
 Claude Code hooks tell Claude to run your script whenever it needs attention. Choose the instructions for your OS below.
 
@@ -284,7 +286,7 @@ claude-focus-vscode/
 
 1. Remove the extension:
    ```bash
-   code --uninstall-extension techpix.claude-focus
+   code --uninstall-extension RahulRajput.claude-focus
    ```
 2. Remove the hook entry from your `~/.claude/settings.json`.
 
