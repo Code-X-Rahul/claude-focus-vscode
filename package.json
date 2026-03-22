@@ -2,7 +2,7 @@
   "name": "claude-focus",
   "displayName": "Claude Focus",
   "description": "Automatically focuses VS Code window when Claude Code needs user action",
-  "version": "0.1.0",
+  "version": "0.5.0",
   "publisher": "RahulRajput",
   "engines": {
     "vscode": "^1.85.0"
