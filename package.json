@@ -3,7 +3,7 @@
   "displayName": "Claude Focus",
   "description": "Automatically focuses VS Code window when Claude Code needs user action",
   "version": "0.1.0",
-  "publisher": "techpix",
+  "publisher": "RahulRajput",
   "engines": {
     "vscode": "^1.85.0"
   },
